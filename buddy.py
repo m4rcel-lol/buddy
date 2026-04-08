@@ -13,6 +13,8 @@ import urllib.request
 from collections import defaultdict
 
 NAME = "Buddy"
+MAX_HISTORY_ITEMS = 16
+MAX_CONTEXT_MESSAGES = 8
 
 MOOD_RESPONSES = {
     "happy": [
@@ -207,7 +209,7 @@ class OllamaClient:
                 ),
             }
         ]
-        for role, content in history[-8:]:
+        for role, content in history[-MAX_CONTEXT_MESSAGES:]:
             messages.append({"role": role, "content": content})
         messages.append({"role": "user", "content": prompt})
 
@@ -229,7 +231,8 @@ class OllamaClient:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = resp.read().decode("utf-8")
             parsed = json.loads(raw)
-            content = ((parsed.get("message") or {}).get("content") or "").strip()
+            message = parsed.get("message") or {}
+            content = (message.get("content") or "").strip()
             return content or None
         except (urllib.error.URLError, TimeoutError, ValueError, OSError):
             return None
@@ -262,8 +265,8 @@ class Buddy:
     def _remember(self, user_text, assistant_text):
         self.history.append(("user", user_text))
         self.history.append(("assistant", assistant_text))
-        if len(self.history) > 16:
-            self.history = self.history[-16:]
+        if len(self.history) > MAX_HISTORY_ITEMS:
+            self.history = self.history[-MAX_HISTORY_ITEMS:]
 
     def _respond_with_ollama(self, t):
         reply = self.ollama.ask(t, self.history)
