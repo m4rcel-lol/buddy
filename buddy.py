@@ -189,12 +189,17 @@ class OllamaClient:
         self.base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         self.model = os.getenv("OLLAMA_MODEL", "llama3.2")
         self.timeout = float(os.getenv("OLLAMA_TIMEOUT", "12"))
+        self.debug = os.getenv("BUDDY_DEBUG_OLLAMA", "0").lower() in {"1", "true", "yes", "on"}
         self.enabled = os.getenv("BUDDY_USE_OLLAMA", "1").lower() not in {
             "0",
             "false",
             "no",
             "off",
         }
+
+    def _log_debug(self, msg):
+        if self.debug:
+            print(f"[buddy][ollama] {msg}", file=sys.stderr, flush=True)
 
     def ask(self, prompt, history):
         if not self.enabled:
@@ -234,7 +239,8 @@ class OllamaClient:
             message = parsed.get("message") or {}
             content = (message.get("content") or "").strip()
             return content or None
-        except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+        except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+            self._log_debug(f"request failed: {type(exc).__name__}: {exc}")
             return None
 
 
@@ -269,8 +275,7 @@ class Buddy:
             self.history = self.history[-MAX_HISTORY_ITEMS:]
 
     def _respond_with_ollama(self, t):
-        context_history = self.history + [("user", t)]
-        reply = self.ollama.ask(t, context_history)
+        reply = self.ollama.ask(t, self.history)
         if reply:
             return reply
         return None
