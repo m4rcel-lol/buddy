@@ -188,7 +188,11 @@ class OllamaClient:
     def __init__(self):
         self.base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         self.model = os.getenv("OLLAMA_MODEL", "llama3.2")
-        self.timeout = float(os.getenv("OLLAMA_TIMEOUT", "12"))
+        timeout_raw = os.getenv("OLLAMA_TIMEOUT", "12")
+        try:
+            self.timeout = float(timeout_raw)
+        except ValueError:
+            self.timeout = 12.0
         self.debug = os.getenv("BUDDY_DEBUG_OLLAMA", "0").lower() in {"1", "true", "yes", "on"}
         self.enabled = os.getenv("BUDDY_USE_OLLAMA", "1").lower() not in {
             "0",
@@ -268,7 +272,7 @@ class Buddy:
                 return mood
         return None
 
-    def _remember(self, user_text, assistant_text):
+    def remember(self, user_text, assistant_text):
         self.history.append(("user", user_text))
         self.history.append(("assistant", assistant_text))
         if len(self.history) > MAX_HISTORY_ITEMS:
@@ -406,7 +410,7 @@ def main():
         if line == "__EXIT__":
             break
         reply = buddy.respond(line)
-        buddy._remember(line, reply)
+        buddy.remember(line, reply)
         print(reply, flush=True)
 
 
