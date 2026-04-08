@@ -269,7 +269,8 @@ class Buddy:
             self.history = self.history[-MAX_HISTORY_ITEMS:]
 
     def _respond_with_ollama(self, t):
-        reply = self.ollama.ask(t, self.history)
+        context_history = self.history + [("user", t)]
+        reply = self.ollama.ask(t, context_history)
         if reply:
             return reply
         return None
@@ -340,11 +341,6 @@ class Buddy:
                 topic = "boredom"
             return random.choice(ADVICE[topic])
 
-        if re.search(r"\b(vent|i feel|feeling|i'?m (so |really |very )?(sad|tired|angry|stressed|lonely|lost|confused|happy|grateful))\b", tl):
-            mood = self._detect_mood(tl)
-            if mood:
-                return random.choice(MOOD_RESPONSES[mood])
-
         if re.search(r"\b(compliment|say something nice|nice thing|flatter)\b", tl):
             return random.choice(COMPLIMENTS)
         if re.search(r"\b(roast|insult|be mean|talk trash|diss)\b", tl):
@@ -354,7 +350,7 @@ class Buddy:
         if mood:
             return random.choice(MOOD_RESPONSES[mood])
 
-        if re.search(r"\b(what can you do|capabilities|help with|features)\b", tl):
+        if re.search(r"\b(what can you do|what can you help with|capabilities|features)\b", tl):
             return (
                 "I can: tell jokes, share wild trivia, give advice, chat about feelings, ask deep questions, "
                 "suggest things to do, and use a local Ollama model for open-ended replies."
@@ -372,10 +368,11 @@ class Buddy:
                 ]
             )
 
+        ai_reply = self._respond_with_ollama(t)
+        if ai_reply:
+            return ai_reply
+
         if re.search(r"\b(do you|are you|can you|would you|have you)\b", tl) and "?" in t:
-            ai_reply = self._respond_with_ollama(t)
-            if ai_reply:
-                return ai_reply
             return random.choice(
                 [
                     "That's a good question for a Python script. Honestly, something like yes.",
@@ -384,10 +381,6 @@ class Buddy:
                     "Depends on your definition, but let's say yes and see where it leads.",
                 ]
             )
-
-        ai_reply = self._respond_with_ollama(t)
-        if ai_reply:
-            return ai_reply
 
         reflective = [
             f"Interesting. {self.markov.gen()} What made you bring that up?",
